@@ -188,7 +188,7 @@ function calc(soAkhir, smu) {
   const lastDay = new Date(y, m, 0).getDate();
   const smuHarian = smu / d;
   const doc = smuHarian > 0 ? soAkhir / smuHarian : null;
-  const raw = soAkhir + smuHarian * ((lastDay - d) + state.cfg.leadDays);
+  const raw = smuHarian * ((lastDay - d) + state.cfg.leadDays);
   return { smuHarian, doc, jumlah: Math.ceil(Math.round(raw * 1e6) / 1e6) };
 }
 
