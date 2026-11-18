@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kalkulator ERO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f2f4f3; --surface:#fff; --ink:#15211f; --muted:#5d6b68; --line:#d9dfdd;
+  --accent:#1d5a4b; --accent-ink:#fff; --red:#c8102e; --red-bg:#fdecee; --ok:#1d7a4f;
+  --field:#f8faf9;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#101716;--surface:#18211f;--ink:#e8eeec;--muted:#9aa9a5;--line:#2c3a37;
+    --accent:#58b79f;--accent-ink:#0b1412;--red:#ff6b7f;--red-bg:#3a1a20;--ok:#5fcf9a;--field:#121b19;}
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+main{max-width:980px;margin:0 auto;padding:24px 16px 120px}
+h1{font-size:26px;line-height:1.2;margin:0 0 4px;font-weight:600;letter-spacing:-.01em}
+h2{font-size:16px;margin:0 0 12px;font-weight:600}
+.lead{color:var(--muted);margin:0 0 24px}
+section.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
+label{display:block;font-size:13px;color:var(--muted);font-weight:500}
+input,select{width:100%;margin-top:4px;padding:9px 10px;font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:6px;min-height:40px}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.grid2{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.meta dt{font-size:12px;color:var(--muted)} .meta dd{margin:0;font-weight:500}
+.items{display:flex;flex-direction:column;gap:12px}
+.item{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:8px;padding:14px;background:var(--surface)}
+.item.short{border-color:var(--red);border-left-color:var(--red);background:var(--red-bg)}
+.item.short input,.item.short select{background:var(--surface)}
+.item-head{display:flex;gap:8px;align-items:flex-end;margin-bottom:12px}
+.item-head label{flex:1}
+.rm{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:6px;width:40px;height:40px;font-size:20px;cursor:pointer}
+.rm:hover{color:var(--red);border-color:var(--red)}
+.fields{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.calc{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.calc div span{display:block;font-size:12px;color:var(--muted)}
+.calc div b{font-size:18px;font-weight:600}
+.calc .ero b{font-size:22px;color:var(--accent)}
+.item.short .calc .ero b{color:var(--red)}
+.stockbox b{display:block;margin-top:4px;padding:9px 0;font-size:16px;font-weight:600}
+.alert{margin:12px 0 0;color:var(--red);font-weight:600}
+.btn{font:inherit;font-weight:600;border-radius:6px;padding:10px 16px;cursor:pointer;border:1px solid var(--accent);min-height:42px}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.addrow{margin-top:12px}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
+.bar-in{max-width:980px;margin:0 auto;display:flex;gap:16px;align-items:center;justify-content:space-between}
+.bar-info{font-size:14px} .bar-info .bad{color:var(--red);font-weight:600} .bar-info .hint{color:var(--muted)}
+.banner{padding:12px 14px;border-radius:8px;margin-bottom:16px;background:var(--red-bg);color:var(--red);font-weight:500}
+.hidden{display:none!important}
+.recap-head{display:flex;flex-wrap:wrap;gap:6px 24px;margin-bottom:14px}
+.recap-head div span{display:block;font-size:12px;color:var(--muted)}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;white-space:normal;min-width:200px}
+th{font-size:12px;color:var(--muted);font-weight:500}
+tfoot td{font-weight:600;border-bottom:0}
+.ok{color:var(--ok);font-weight:600}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spinner{animation-duration:2s}}
+@media (max-width:720px){
+  .grid2,.meta{grid-template-columns:1fr}
+  .fields{grid-template-columns:1fr 1fr}
+  .calc{grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .bar-in{flex-direction:column;align-items:stretch;gap:8px}
+}
+@media print{
+  body{background:#fff;color:#000} .bar,.actions,#formView{display:none!important}
+  section.panel{border:0;padding:0}
+}
+</style>
+</head>
+<body>
+<main>
+  <h1>Kalkulator ERO</h1>
+  <p class="lead">Pilih outlet, tambahkan SKU, lalu ajukan. Data tersimpan ke Riwayat ERO dan stok gudang otomatis berkurang.</p>
+
+  <div id="banner" class="banner hidden" role="alert"></div>
+
+  <div id="formView">
+    <section class="panel">
+      <h2>Outlet dan tanggal</h2>
+      <div class="grid2">
+        <label>Outlet
+          <input id="outlet" list="outletList" placeholder="Ketik atau pilih nama outlet" autocomplete="off">
+          <datalist id="outletList"></datalist>
+        </label>
+        <label>Tanggal ERO
+          <input id="tanggal" type="date">
+        </label>
+      </div>
+      <dl class="meta hidden" id="meta">
+        <div><dt>Warehouse penyuplai</dt><dd id="mWh">–</dd></div>
+        <div><dt>Store Manager</dt><dd id="mSm">–</dd></div>
+        <div><dt>Area Manager</dt><dd id="mAm">–</dd></div>
+      </dl>
+    </section>
+
+    <section class="panel hidden" id="itemsPanel">
+      <h2>Daftar SKU</h2>
+      <div class="items" id="items"></div>
+      <div class="addrow"><button class="btn ghost" id="addBtn" type="button">+ Tambah SKU</button></div>
+    </section>
+  </div>
+
+  <section class="panel hidden" id="recap" aria-live="polite">
+    <h2><span class="ok">✓</span> ERO berhasil diajukan</h2>
+    <div class="recap-head" id="recapHead"></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th>SKU</th><th>SO awal</th><th>SO akhir</th><th>SMU</th><th>SMU harian</th><th>DOC</th><th>Jumlah ERO</th><th>Stok gudang<br>sebelum → sesudah</th>
+        </tr></thead>
+        <tbody id="recapBody"></tbody>
+        <tfoot id="recapFoot"></tfoot>
+      </table>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="newBtn" type="button">Buat ERO baru</button>
+      <button class="btn ghost" id="copyBtn" type="button">Salin rekap</button>
+      <button class="btn ghost" id="printBtn" type="button">Cetak / simpan PDF</button>
+    </div>
+  </section>
+</main>
+
+<div class="bar" id="bar">
+  <div class="bar-in">
+    <div class="bar-info" id="barInfo"><span class="hint">Pilih outlet untuk mulai.</span></div>
+    <button class="btn primary" id="submitBtn" type="button" disabled>Ajukan ERO</button>
+  </div>
+</div>
+
+<script>
+/* ====== GANTI DENGAN URL WEB APP APPS SCRIPT ANDA ====== */
+const API_URL = 'https://script.google.com/macros/s/AKfycbyH71LdrsRzGazl0AaoraqH1P9AuJrLrkR4Lf8dCEt1hIZtJhW1BS0rdMGsB-k0M_9eqA/exec';
+/* ======================================================= */
+
+const $ = s => document.querySelector(s);
+const state = { outlets: [], outlet: null, skus: [], dates: [], items: [], uid: 0,
+                cfg: { leadDays: 7, allowShortage: false }, lastRecap: null, busy: false };
+
+/* ---------- util ---------- */
+const nf = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 });
+const fmt = n => (n === null || n === undefined || isNaN(n)) ? '–' : nf.format(n);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dmy = k => k ? k.split('-').reverse().join('/') : '';
+const toNum = v => (v === '' || v === null || v === undefined) ? null : (isFinite(Number(v)) ? Number(v) : null);
+const todayKey = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
+
+function showBanner(msg) {
+  const b = $('#banner');
+  if (!msg) { b.classList.add('hidden'); return; }
+  b.textContent = msg; b.classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function apiGet(action, params = {}) {
+  const u = new URL(API_URL);
+  u.searchParams.set('action', action);
+  Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
+  const r = await fetch(u);
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || 'Gagal memuat data.');
+  return j;
+}
+async function apiPost(payload) {
+  const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+  return r.json();
+}
+
+/* ---------- rumus (sama dengan backend) ---------- */
+function calc(soAkhir, smu) {
+  const k = $('#tanggal').value;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || soAkhir === null || smu === null) return null;
+  const [y, m, d] = k.split('-').map(Number);
+  const lastDay = new Date(y, m, 0).getDate();
+  const smuHarian = smu / d;
+  const doc = smuHarian > 0 ? soAkhir / smuHarian : null;
+  const raw = soAkhir + smuHarian * ((lastDay - d) + state.cfg.leadDays);
+  return { smuHarian, doc, jumlah: Math.ceil(Math.round(raw * 1e6) / 1e6) };
+}
+
+/* stok gudang pada tanggal ERO: {state:'ok'|'nodate'|'nosku', qty} */
+function stockFor(sku) {
+  const k = $('#tanggal').value;
+  const rec = state.skus.find(s => s.sku === sku);
+  if (!sku || !rec) return { state: 'nosku', qty: null };
+  if (!state.dates.includes(k)) return { state: 'nodate', qty: null };
+  return { state: 'ok', qty: rec.stock[k] ?? 0 };
+}
+
+/* ---------- outlet ---------- */
+async function init() {
+  $('#tanggal').value = todayKey();
+  if (API_URL.startsWith('GANTI')) { showBanner('URL Web App belum diisi. Ubah konstanta API_URL di index.html.'); return; }
+  try {
+    const j = await apiGet('bootstrap');
+    state.outlets = j.outlets; state.cfg = j.config;
+    $('#outletList').innerHTML = j.outlets.map(o => `<option value="${esc(o.outlet)}">`).join('');
+  } catch (e) { showBanner('Gagal memuat daftar outlet: ' + e.message); }
+}
+
+async function onOutletChange() {
+  const name = $('#outlet').value.trim().toLowerCase();
+  const o = state.outlets.find(x => x.outlet.toLowerCase() === name);
+  if (!o) return;
+  if (state.outlet && state.outlet.outlet === o.outlet) return;
+  if (state.items.some(i => i.sku || i.soAwal || i.soAkhir || i.smu) && !confirm('Ganti outlet akan mengosongkan daftar SKU. Lanjutkan?')) {
+    $('#outlet').value = state.outlet ? state.outlet.outlet : ''; return;
+  }
+  showBanner('');
+  if (!o.warehouse) { showBanner('Outlet ini belum punya Warehouse di data master.'); return; }
+  state.outlet = o;
+  $('#mWh').textContent = o.warehouse; $('#mSm').textContent = o.storeManager || '–'; $('#mAm').textContent = o.areaManager || '–';
+  $('#meta').classList.remove('hidden');
+  await loadStock();
+  state.items = []; $('#items').innerHTML = '';
+  $('#itemsPanel').classList.remove('hidden');
+  addItem(true);
+}
+
+async function loadStock() {
+  $('#barInfo').innerHTML = '<span class="spinner"></span>Memuat stok gudang…';
+  try {
+    const j = await apiGet('stock', { warehouse: state.outlet.warehouse });
+    state.skus = j.skus; state.dates = j.dates;
+  } catch (e) { showBanner('Gagal memuat stok: ' + e.message); state.skus = []; state.dates = []; }
+}
+
+/* ---------- baris SKU ---------- */
+function addItem(focus) {
+  const it = { id: ++state.uid, sku: '', soAwal: '', soAkhir: '', smu: '' };
+  state.items.push(it);
+  const el = document.createElement('article');
+  el.className = 'item'; el.dataset.id = it.id;
+  el.innerHTML = `
+    <div class="item-head">
+      <label>SKU <select class="f-sku"></select></label>
+      <button class="rm" type="button" aria-label="Hapus SKU" title="Hapus SKU">×</button>
+    </div>
+    <div class="fields">
+      <div class="stockbox"><label>Stok gudang <span class="stk-date"></span></label><b class="f-stock">–</b></div>
+      <label>SO awal (tgl 1)<input class="f-soAwal" type="number" inputmode="decimal" min="0" step="any"></label>
+      <label>SO akhir<input class="f-soAkhir" type="number" inputmode="decimal" min="0" step="any"></label>
+      <label>SMU (bulanan)<input class="f-smu" type="number" inputmode="decimal" min="0" step="any"></label>
+    </div>
+    <div class="calc">
+      <div><span>SMU harian</span><b class="o-smuH">–</b></div>
+      <div><span>DOC (hari)</span><b class="o-doc">–</b></div>
+      <div class="ero"><span>Jumlah ERO</span><b class="o-ero">–</b></div>
+    </div>
+    <p class="alert hidden" role="alert"></p>`;
+  $('#items').appendChild(el);
+
+  el.querySelector('.f-sku').addEventListener('change', e => { it.sku = e.target.value; refreshSkuOptions(); updateAll(); });
+  ['soAwal','soAkhir','smu'].forEach(f => el.querySelector('.f-' + f).addEventListener('input', e => { it[f] = e.target.value; updateRow(it); updateBar(); }));
+  el.querySelector('.rm').addEventListener('click', () => {
+    state.items = state.items.filter(x => x.id !== it.id); el.remove();
+    if (!state.items.length) addItem(false);
+    refreshSkuOptions(); updateBar();
+  });
+  refreshSkuOptions(); updateRow(it); updateBar();
+  if (focus) el.querySelector('.f-sku').focus();
+}
+
+function refreshSkuOptions() {
+  const used = new Set(state.items.map(i => i.sku).filter(Boolean));
+  state.items.forEach(it => {
+    const sel = document.querySelector(`.item[data-id="${it.id}"] .f-sku`);
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Pilih SKU…</option>' + state.skus.map(s =>
+      `<option value="${esc(s.sku)}" ${s.sku === it.sku ? 'selected' : ''} ${used.has(s.sku) && s.sku !== it.sku ? 'disabled' : ''}>${esc(s.sku)}</option>`).join('');
+  });
+}
+
+function evalItem(it) {
+  const st = stockFor(it.sku);
+  const c = calc(toNum(it.soAkhir), toNum(it.smu));
+  const complete = !!it.sku && toNum(it.soAwal) !== null && toNum(it.soAkhir) !== null && toNum(it.smu) !== null
+                   && toNum(it.soAwal) >= 0 && toNum(it.soAkhir) >= 0 && toNum(it.smu) >= 0 && !!c;
+  let problem = null;
+  if (it.sku && st.state === 'nodate') problem = `Tanggal ${dmy($('#tanggal').value)} tidak ada di Inventory Stock, stok tidak bisa dicek.`;
+  else if (c && st.state === 'ok' && st.qty < c.jumlah)
+    problem = `Stok gudang ${fmt(st.qty)} tidak cukup untuk ERO ${fmt(c.jumlah)} (kurang ${fmt(c.jumlah - st.qty)}).`;
+  return { st, c, complete, problem };
+}
+
+function updateRow(it) {
+  const el = document.querySelector(`.item[data-id="${it.id}"]`); if (!el) return;
+  const { st, c, problem } = evalItem(it);
+  el.querySelector('.stk-date').textContent = it.sku ? '(' + dmy($('#tanggal').value) + ')' : '';
+  el.querySelector('.f-stock').textContent = st.state === 'ok' ? fmt(st.qty) : (st.state === 'nodate' ? 'Tidak ada data' : '–');
+  el.querySelector('.o-smuH').textContent = c ? fmt(c.smuHarian) : '–';
+  el.querySelector('.o-doc').textContent = c ? (c.doc === null ? '∞' : fmt(c.doc)) : '–';
+  el.querySelector('.o-ero').textContent = c ? fmt(c.jumlah) : '–';
+  el.classList.toggle('short', !!problem);
+  const a = el.querySelector('.alert'); a.textContent = problem || ''; a.classList.toggle('hidden', !problem);
+}
+
+function updateAll() { state.items.forEach(updateRow); updateBar(); }
+
+function updateBar() {
+  const btn = $('#submitBtn'), info = $('#barInfo');
+  if (!state.outlet) { btn.disabled = true; info.innerHTML = '<span class="hint">Pilih outlet untuk mulai.</span>'; return; }
+  const ev = state.items.map(evalItem);
+  const done = ev.filter(e => e.complete).length;
+  const bad = ev.filter(e => e.problem).length;
+  const total = ev.reduce((s, e) => s + (e.c ? e.c.jumlah : 0), 0);
+  const incomplete = state.items.length - done;
+  let msg = `${state.items.length} SKU · total ERO ${fmt(total)}`;
+  if (bad) msg += ` · <span class="bad">${bad} SKU stok kurang</span>`;
+  if (incomplete) msg += ` · <span class="hint">${incomplete} baris belum lengkap</span>`;
+  info.innerHTML = msg;
+  btn.disabled = state.busy || incomplete > 0 || !state.items.length || (bad > 0 && !state.cfg.allowShortage) || !$('#tanggal').value;
+}
+
+/* ---------- ajukan ---------- */
+async function submit() {
+  if (state.busy) return;
+  state.busy = true; const btn = $('#submitBtn'); btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Mengajukan…';
+  showBanner('');
+  try {
+    const res = await apiPost({
+      action: 'submit', outlet: state.outlet.outlet, tanggal: $('#tanggal').value,
+      items: state.items.map(i => ({ sku: i.sku, soAwal: toNum(i.soAwal), soAkhir: toNum(i.soAkhir), smu: toNum(i.smu) }))
+    });
+    if (!res.ok) { showBanner(res.error); await loadStock(); refreshSkuOptions(); updateAll(); return; }
+    showRecap(res);
+  } catch (e) {
+    showBanner('Gagal menghubungi server: ' + e.message + '. Cek Riwayat ERO sebelum mencoba lagi agar tidak terkirim dua kali.');
+  } finally {
+    state.busy = false; btn.textContent = 'Ajukan ERO'; updateBar();
+  }
+}
+
+function showRecap(r) {
+  state.lastRecap = r;
+  $('#recapHead').innerHTML = [
+    ['ID pengajuan', r.id], ['Tanggal ERO', dmy(r.tanggal)], ['Outlet', r.outlet], ['Warehouse', r.warehouse],
+    ['Store Manager', r.storeManager || '–'], ['Area Manager', r.areaManager || '–']
+  ].map(([k, v]) => `<div><span>${k}</span>${esc(v)}</div>`).join('');
+  $('#recapBody').innerHTML = r.items.map(i => `<tr>
+    <td>${esc(i.sku)}</td><td>${fmt(i.soAwal)}</td><td>${fmt(i.soAkhir)}</td><td>${fmt(i.smu)}</td>
+    <td>${fmt(i.smuHarian)}</td><td>${i.doc === null ? '∞' : fmt(i.doc)}</td><td><b>${fmt(i.jumlah)}</b></td>
+    <td>${fmt(i.stokSebelum)} → ${fmt(i.stokSesudah)}</td></tr>`).join('');
+  $('#recapFoot').innerHTML = `<tr><td colspan="6">Total ERO</td><td>${fmt(r.items.reduce((s, i) => s + i.jumlah, 0))}</td><td></td></tr>`;
+  $('#formView').classList.add('hidden'); $('#bar').classList.add('hidden');
+  $('#recap').classList.remove('hidden'); window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function copyRecap() {
+  const r = state.lastRecap; if (!r) return;
+  const head = ['SKU','SO awal','SO akhir','SMU','SMU harian','DOC','Jumlah ERO'].join('\t');
+  const rows = r.items.map(i => [i.sku, i.soAwal, i.soAkhir, i.smu, +i.smuHarian.toFixed(2), i.doc === null ? '' : +i.doc.toFixed(2), i.jumlah].join('\t'));
+  const text = `${r.id}\t${dmy(r.tanggal)}\t${r.warehouse}\t${r.outlet}\n${head}\n${rows.join('\n')}`;
+  navigator.clipboard.writeText(text).then(() => { $('#copyBtn').textContent = 'Tersalin ✓'; setTimeout(() => $('#copyBtn').textContent = 'Salin rekap', 1800); });
+}
+
+async function resetAll() {
+  $('#recap').classList.add('hidden'); $('#formView').classList.remove('hidden'); $('#bar').classList.remove('hidden');
+  await loadStock();                      // stok terbaru setelah pengurangan
+  state.items = []; $('#items').innerHTML = ''; addItem(false); updateAll();
+}
+
+/* ---------- event ---------- */
+$('#outlet').addEventListener('input', onOutletChange);
+$('#outlet').addEventListener('change', onOutletChange);
+$('#tanggal').addEventListener('change', updateAll);
+$('#addBtn').addEventListener('click', () => addItem(true));
+$('#submitBtn').addEventListener('click', submit);
+$('#newBtn').addEventListener('click', resetAll);
+$('#copyBtn').addEventListener('click', copyRecap);
+$('#printBtn').addEventListener('click', () => window.print());
+init();
+</script>
+</body>
+</html>
