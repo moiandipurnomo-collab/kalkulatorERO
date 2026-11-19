@@ -29,7 +29,7 @@ label{display:block;font-size:13px;color:var(--muted);font-weight:500}
 input,select{width:100%;margin-top:4px;padding:9px 10px;font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:6px;min-height:40px}
 input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .grid2{display:grid;grid-template-columns:2fr 1fr;gap:14px}
-.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.meta{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
 .meta dt{font-size:12px;color:var(--muted)} .meta dd{margin:0;font-weight:500}
 .items{display:flex;flex-direction:column;gap:12px}
 .item{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:8px;padding:14px;background:var(--surface)}
@@ -126,6 +126,7 @@ tfoot td{font-weight:600;border-bottom:0}
       </div>
       <dl class="meta hidden" id="meta">
         <div><dt>Warehouse penyuplai</dt><dd id="mWh">–</dd></div>
+        <div><dt>Kota</dt><dd id="mKota">–</dd></div>
         <div><dt>Store Manager</dt><dd id="mSm">–</dd></div>
         <div><dt>Area Manager</dt><dd id="mAm">–</dd></div>
       </dl>
@@ -266,7 +267,7 @@ async function onOutletChange() {
   showBanner('');
   if (!o.warehouse) { showBanner('Outlet ini belum punya Warehouse di data master.'); return; }
   state.outlet = o;
-  $('#mWh').textContent = o.warehouse; $('#mSm').textContent = o.storeManager || '–'; $('#mAm').textContent = o.areaManager || '–';
+  $('#mWh').textContent = o.warehouse; $('#mKota').textContent = o.kota || '–'; $('#mSm').textContent = o.storeManager || '–'; $('#mAm').textContent = o.areaManager || '–';
   $('#meta').classList.remove('hidden');
   await loadStock();
   state.items = []; $('#items').innerHTML = '';
@@ -279,6 +280,7 @@ async function loadStock() {
   try {
     const j = await apiGet('stock', { warehouse: state.outlet.warehouse });
     state.skus = j.skus; state.dates = j.dates;
+    if (!j.skus.length) showBanner('Warehouse "' + state.outlet.warehouse + '" belum ada di sheet Inventory Stock, jadi SKU tidak bisa dipilih.');
   } catch (e) { showBanner('Gagal memuat stok: ' + e.message); state.skus = []; state.dates = []; }
 }
 
