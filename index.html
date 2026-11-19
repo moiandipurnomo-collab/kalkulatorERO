@@ -20,7 +20,7 @@
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif;font-variant-numeric:tabular-nums}
-main{max-width:980px;margin:0 auto;padding:24px 16px 120px}
+main{max-width:1240px;margin:0 auto;padding:24px 16px 120px}
 h1{font-size:26px;line-height:1.2;margin:0 0 4px;font-weight:600;letter-spacing:-.01em}
 h2{font-size:16px;margin:0 0 12px;font-weight:600}
 .lead{color:var(--muted);margin:0 0 24px}
@@ -53,7 +53,7 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .addrow{margin-top:12px}
 .bar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
-.bar-in{max-width:980px;margin:0 auto;display:flex;gap:16px;align-items:center;justify-content:space-between}
+.bar-in{max-width:1240px;margin:0 auto;display:flex;gap:16px;align-items:center;justify-content:space-between}
 .bar-info{font-size:14px} .bar-info .bad{color:var(--red);font-weight:600} .bar-info .hint{color:var(--muted)}
 .banner{padding:12px 14px;border-radius:8px;margin-bottom:16px;background:var(--red-bg);color:var(--red);font-weight:500}
 .hidden{display:none!important}
@@ -76,8 +76,29 @@ tfoot td{font-weight:600;border-bottom:0}
   .calc{grid-template-columns:1fr 1fr 1fr;gap:8px}
   .bar-in{flex-direction:column;align-items:stretch;gap:8px}
 }
+
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
+.side{position:sticky;top:16px}
+.side .panel{margin-bottom:0}
+.hintp{margin:-6px 0 12px;font-size:13px;color:var(--muted)}
+.conv label{margin-bottom:12px}
+.conv .btn{width:100%}
+.cv-out{margin-top:14px}
+.cv-err{color:var(--red);font-weight:600;margin:0}
+.cv-main{padding:12px;border-radius:8px;background:var(--field);border:1px solid var(--line)}
+.cv-main span{display:block;font-size:12px;color:var(--muted)}
+.cv-main b{font-size:24px;font-weight:600;color:var(--accent)}
+.cv-main small{display:block;color:var(--muted);margin-top:2px}
+.conv h3{font-size:14px;margin:16px 0 8px;font-weight:600}
+.tg{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.tg li{border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.tg .n{font-weight:500;overflow-wrap:anywhere}
+.tg .r{display:flex;justify-content:space-between;gap:8px;margin-top:4px;font-size:14px}
+.tg .r b{font-weight:600} .tg .r span{color:var(--muted)}
+.tg .note{margin-top:4px;font-size:12px;color:var(--muted)}
+@media (max-width:960px){.layout{grid-template-columns:1fr}.side{position:static}}
 @media print{
-  body{background:#fff;color:#000} .bar,.actions,#formView{display:none!important}
+  body{background:#fff;color:#000} .bar,.actions,#formView,.side{display:none!important}
   section.panel{border:0;padding:0}
 }
 </style>
@@ -89,6 +110,8 @@ tfoot td{font-weight:600;border-bottom:0}
 
   <div id="banner" class="banner hidden" role="alert"></div>
 
+  <div class="layout">
+  <div class="col">
   <div id="formView">
     <section class="panel">
       <h2>Outlet dan tanggal</h2>
@@ -133,6 +156,24 @@ tfoot td{font-weight:600;border-bottom:0}
       <button class="btn ghost" id="printBtn" type="button">Cetak / simpan PDF</button>
     </div>
   </section>
+  </div>
+
+  <aside class="side" id="convBox">
+    <section class="panel conv">
+      <h2>Konversi SKU</h2>
+      <p class="hintp">Ubah jumlah satuan terkecil (misal SMU) ke satuan stok.</p>
+      <label>SKU
+        <input id="cvSku" list="cvList" placeholder="Ketik atau pilih SKU" autocomplete="off">
+        <datalist id="cvList"></datalist>
+      </label>
+      <label>Jumlah <span id="cvUnit"></span>
+        <input id="cvQty" type="number" inputmode="decimal" min="0" step="any">
+      </label>
+      <button class="btn primary" id="cvBtn" type="button">Convert</button>
+      <div class="cv-out" id="cvOut" aria-live="polite"></div>
+    </section>
+  </aside>
+  </div>
 </main>
 
 <div class="bar" id="bar">
@@ -149,7 +190,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbyH71LdrsRzGazl0AaoraqH
 
 const $ = s => document.querySelector(s);
 const state = { outlets: [], outlet: null, skus: [], dates: [], items: [], uid: 0,
-                cfg: { leadDays: 7, allowShortage: false }, lastRecap: null, busy: false };
+                cfg: { leadDays: 7, allowShortage: false }, lastRecap: null, busy: false, konv: null };
 
 /* ---------- util ---------- */
 const nf = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 });
@@ -188,8 +229,8 @@ function calc(soAkhir, smu) {
   const lastDay = new Date(y, m, 0).getDate();
   const smuHarian = smu / d;
   const doc = smuHarian > 0 ? soAkhir / smuHarian : null;
-  const raw = smuHarian * ((lastDay - d) + state.cfg.leadDays);
-  return { smuHarian, doc, jumlah: Math.ceil(Math.round(raw * 1e6) / 1e6) };
+  const raw = smuHarian * ((lastDay - d) + state.cfg.leadDays) - soAkhir;
+  return { smuHarian, doc, jumlah: Math.max(0, Math.ceil(Math.round(raw * 1e6) / 1e6)) };
 }
 
 /* stok gudang pada tanggal ERO: {state:'ok'|'nodate'|'nosku', qty} */
@@ -208,8 +249,10 @@ async function init() {
   try {
     const j = await apiGet('bootstrap');
     state.outlets = j.outlets; state.cfg = j.config;
+    state.konv = j.konversi;
     $('#outletList').innerHTML = j.outlets.map(o => `<option value="${esc(o.outlet)}">`).join('');
   } catch (e) { showBanner('Gagal memuat daftar outlet: ' + e.message); }
+  setupConv();
 }
 
 async function onOutletChange() {
@@ -374,6 +417,61 @@ async function resetAll() {
   await loadStock();                      // stok terbaru setelah pengurangan
   state.items = []; $('#items').innerHTML = ''; addItem(false); updateAll();
 }
+
+
+/* ---------- konversi SKU ---------- */
+const nf4 = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 4 });
+const fmt4 = n => (n === null || n === undefined || isNaN(n)) ? '–' : nf4.format(n);
+const normName = s => String(s || '').replace(/\s+/g, ' ').trim().toUpperCase();
+
+function setupConv() {
+  if (!state.konv) {
+    $('#cvOut').innerHTML = '<p class="cv-err">Sheet "Master SKU Konversi" tidak bisa dibaca.</p>';
+    $('#cvBtn').disabled = true; return;
+  }
+  $('#cvList').innerHTML = state.konv.products.map(p => `<option value="${esc(p.product)}">`).join('');
+}
+function findConvProduct() {
+  const n = normName($('#cvSku').value);
+  return state.konv && state.konv.products.find(p => normName(p.product) === n);
+}
+function convNote(n) {
+  const m = /^SUBSTITUTE\((.*)\)$/i.exec(n || '');
+  return m ? 'Substitusi untuk ' + m[1] : (n || '');
+}
+function convert() {
+  const out = $('#cvOut');
+  const p = findConvProduct(), qty = toNum($('#cvQty').value);
+  if (!p) { out.innerHTML = '<p class="cv-err">SKU tidak ditemukan. Pilih dari daftar.</p>'; return; }
+  if (qty === null || qty < 0) { out.innerHTML = '<p class="cv-err">Isi jumlah dengan angka ≥ 0.</p>'; return; }
+
+  const stockQty = qty / p.factor;
+  let html = `<div class="cv-main">
+      <span>Hasil dalam satuan stok</span>
+      <b>${fmt4(stockQty)} ${esc(p.unitStock)}</b>
+      <small>${fmt4(qty)} ${esc(p.unitSmall)} ÷ ${fmt4(p.factor)} ${esc(p.unitSmall)}/${esc(p.unitStock)}</small>
+    </div>`;
+
+  const base = state.konv.bases.find(b => normName(b.product) === normName(p.product));
+  if (base) {
+    html += '<h3>Konversi ke SKU lain</h3><ul class="tg">' + base.targets.map(t => {
+      const v = stockQty / base.qty * t.factor;
+      const note = convNote(t.note);
+      return `<li><div class="n">${esc(t.product)}</div>
+        <div class="r"><span>Hasil</span><b>${fmt4(v)} ${esc(t.unit)}</b></div>
+        ${note ? `<div class="note">${esc(note)}</div>` : ''}</li>`;
+    }).join('') + '</ul>';
+  }
+  out.innerHTML = html;
+}
+$('#cvSku').addEventListener('input', () => {
+  const p = findConvProduct();
+  $('#cvUnit').textContent = p ? '(dalam ' + p.unitSmall + ')' : '';
+  $('#cvOut').innerHTML = '';
+});
+$('#cvQty').addEventListener('input', () => { $('#cvOut').innerHTML = ''; });
+$('#cvQty').addEventListener('keydown', e => { if (e.key === 'Enter') convert(); });
+$('#cvBtn').addEventListener('click', convert);
 
 /* ---------- event ---------- */
 $('#outlet').addEventListener('input', onOutletChange);
