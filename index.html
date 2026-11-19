@@ -117,8 +117,7 @@ tfoot td{font-weight:600;border-bottom:0}
       <h2>Outlet dan tanggal</h2>
       <div class="grid2">
         <label>Outlet
-          <input id="outlet" list="outletList" placeholder="Ketik atau pilih nama outlet" autocomplete="off">
-          <datalist id="outletList"></datalist>
+          <select id="outlet"><option value="">Memuat daftar outlet…</option></select>
         </label>
         <label>Tanggal ERO
           <input id="tanggal" type="date">
@@ -164,8 +163,7 @@ tfoot td{font-weight:600;border-bottom:0}
       <h2>Konversi SKU</h2>
       <p class="hintp">Ubah jumlah satuan terkecil (misal SMU) ke satuan stok.</p>
       <label>SKU
-        <input id="cvSku" list="cvList" placeholder="Ketik atau pilih SKU" autocomplete="off">
-        <datalist id="cvList"></datalist>
+        <select id="cvSku"><option value="">Memuat daftar SKU…</option></select>
       </label>
       <label>Jumlah <span id="cvUnit"></span>
         <input id="cvQty" type="number" inputmode="decimal" min="0" step="any">
@@ -191,7 +189,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbyH71LdrsRzGazl0AaoraqH
 
 const $ = s => document.querySelector(s);
 const state = { outlets: [], outlet: null, skus: [], dates: [], items: [], uid: 0,
-                cfg: { leadDays: 7, allowShortage: false }, lastRecap: null, busy: false, konv: null };
+                cfg: { leadDays: 7, allowShortage: false }, lastRecap: null, busy: false, konv: null, konvError: '' };
 
 /* ---------- util ---------- */
 const nf = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 });
@@ -251,14 +249,15 @@ async function init() {
     const j = await apiGet('bootstrap');
     state.outlets = j.outlets; state.cfg = j.config;
     state.konv = j.konversi;
-    $('#outletList').innerHTML = j.outlets.map(o => `<option value="${esc(o.outlet)}">`).join('');
+    state.outlets.sort((x, y) => x.outlet.localeCompare(y.outlet, 'id'));
+    $('#outlet').innerHTML = '<option value="">Pilih outlet…</option>' + state.outlets.map(o => `<option value="${esc(o.outlet)}">${esc(o.outlet)}</option>`).join('');
+    state.konvError = j.konversiError || '';
   } catch (e) { showBanner('Gagal memuat daftar outlet: ' + e.message); }
   setupConv();
 }
 
 async function onOutletChange() {
-  const name = $('#outlet').value.trim().toLowerCase();
-  const o = state.outlets.find(x => x.outlet.toLowerCase() === name);
+  const o = state.outlets.find(x => x.outlet === $('#outlet').value);
   if (!o) return;
   if (state.outlet && state.outlet.outlet === o.outlet) return;
   if (state.items.some(i => i.sku || i.soAwal || i.soAkhir || i.smu) && !confirm('Ganti outlet akan mengosongkan daftar SKU. Lanjutkan?')) {
@@ -428,10 +427,12 @@ const normName = s => String(s || '').replace(/\s+/g, ' ').trim().toUpperCase();
 
 function setupConv() {
   if (!state.konv) {
-    $('#cvOut').innerHTML = '<p class="cv-err">Sheet "Master SKU Konversi" tidak bisa dibaca.</p>';
+    $('#cvSku').innerHTML = '<option value="">SKU tidak tersedia</option>';
+    $('#cvOut').innerHTML = '<p class="cv-err">Master SKU Konversi tidak terbaca' + (state.konvError ? ': ' + esc(state.konvError) : '. Pastikan Code.gs terbaru sudah di-deploy sebagai versi baru.') + '</p>';
     $('#cvBtn').disabled = true; return;
   }
-  $('#cvList').innerHTML = state.konv.products.map(p => `<option value="${esc(p.product)}">`).join('');
+  const list = state.konv.products.slice().sort((x, y) => x.product.localeCompare(y.product, 'id'));
+  $('#cvSku').innerHTML = '<option value="">Pilih SKU…</option>' + list.map(p => `<option value="${esc(p.product)}">${esc(p.product)}</option>`).join('');
 }
 function findConvProduct() {
   const n = normName($('#cvSku').value);
@@ -466,7 +467,7 @@ function convert() {
   }
   out.innerHTML = html;
 }
-$('#cvSku').addEventListener('input', () => {
+$('#cvSku').addEventListener('change', () => {
   const p = findConvProduct();
   $('#cvUnit').textContent = p ? '(dalam ' + p.unitSmall + ')' : '';
   $('#cvOut').innerHTML = '';
@@ -476,7 +477,6 @@ $('#cvQty').addEventListener('keydown', e => { if (e.key === 'Enter') convert();
 $('#cvBtn').addEventListener('click', convert);
 
 /* ---------- event ---------- */
-$('#outlet').addEventListener('input', onOutletChange);
 $('#outlet').addEventListener('change', onOutletChange);
 $('#tanggal').addEventListener('change', updateAll);
 $('#addBtn').addEventListener('click', () => addItem(true));
